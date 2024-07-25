@@ -1,6 +1,4 @@
-Here's an updated version of the README to reflect your preferences:
 
-```markdown
 # Remark Extract Headers Example with SvelteKit
 
 This repository contains the completed code for a custom [Remark](https://remark.js.org/) plugin integrated into a SvelteKit project. This example accompanies a tutorial on my blog, [JimsCode](https://jimscode.com), where I explain how to build and use this plugin step-by-step.
