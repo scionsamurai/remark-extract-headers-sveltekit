@@ -5,8 +5,27 @@ export function remarkExtractHeaders() {
     file.data.headers = [];
     let currentHeader = null;
 
-    const generateId = (text) => `${text.toLowerCase().replace(/\s+/g, '-')}-${Math.floor(Math.random() * 10000)}`;
-
+    const generateId = (text) => {
+      // Convert to lowercase and replace spaces with hyphens
+      let id = text.toLowerCase().replace(/\s+/g, '-');
+      
+      // Remove any characters that are not alphanumeric, underscore, or hyphen
+      id = id.replace(/[^a-z0-9_-]/g, '');
+      
+      // Ensure the ID doesn't start with a number or hyphen
+      id = id.replace(/^[0-9-]/, '');
+      
+      // Add a random number
+      id += `-${Math.floor(Math.random() * 10000)}`;
+      
+      // Ensure the ID is not empty
+      if (id === '') {
+        id = `id-${Math.floor(Math.random() * 10000)}`;
+      }
+      
+      return id;
+    };
+    
     const addIdToNode = (node, id) => {
       node.data = node.data || {};
       node.data.hProperties = node.data.hProperties || {};
