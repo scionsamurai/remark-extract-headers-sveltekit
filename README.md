@@ -20,7 +20,7 @@ The custom Remark plugin `remarkExtractHeaders` performs the following tasks:
 
 ## Purpose
 
-This repository is intended for testing and running the completed code example. For detailed instructions on building and integrating this plugin into your own SvelteKit project, please refer to the tutorial on my blog: [How to Extract Headers from Markdown in SvelteKit with Remark](https://jimscode.com/your-tutorial-link).
+This repository is intended for testing and running the completed code example. For detailed instructions on building and integrating this plugin into your own SvelteKit project, please refer to the tutorial on my blog: [How to Extract Headers from Markdown in SvelteKit with Remark](https://github.com/scionsamurai/remark-extract-headers-sveltekit/blob/master/src/posts/post1.md).
 
 ## Installation
 
