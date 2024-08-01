@@ -1,20 +1,20 @@
 ---
 title: "Extracting Headers from Markdown in SvelteKit with mdsvex: A Custom Remark Plugin"
 description: Learn how to create a custom remark plugin for SvelteKit that automatically extracts headers from your Markdown files, enabling dynamic table of contents and improved content navigation.
-date: '2024-07-23'
+date: 'Sun, 28 Jul 2024 22:39:58'
 categories:
   - svelte
   - sveltekit
   - webdev
   - markdown
 author_id: 1
-image: /images/########-banner-png.png
-webp_image: /images/########-banner.webp
-image_thumb: /images/########-banner-png_thumb.png
-banner_alt: /####---
+image: /images/mdsvex-header-extraction-banner-png.png
+webp_image: /images/mdsvex-header-extraction-banner.webp
+image_thumb: /images/mdsvex-header-extraction-banner-png_thumb.png
+banner_alt: "Image of type writer sitting on a paint splotch."
 show_banner: true
 comments: true
-published: false
+published: true
 ---
 
 ## Introduction
@@ -22,6 +22,8 @@ published: false
 Are you building a content-rich website with SvelteKit and Markdown? If so, you've probably wished for an easy way to generate a table of contents or navigation based on your article headers. This can be especially tricky when using mdsvex, the popular Markdown preprocessor for Svelte.
 
 But fear not! In this post, we'll walk through a powerful solution: creating a custom remark plugin that automatically extracts headers from your Markdown files in a SvelteKit project using mdsvex.
+
+The completed code can be viewed on [github](https://github.com/scionsamurai/remark-extract-headers-sveltekit).
 
 ### Why Extract Headers?
 
@@ -79,10 +81,10 @@ If you need a refresher, here are some helpful resources:
    npm install mdsvex
    ```
 
-3. **Additional Dependencies**: For our custom remark plugin, we'll need one more package:
+3. **Additional Dependencies**: For our custom remark plugin, we'll need two more packages:
 
    ```
-   npm install unist-util-visit
+   npm install unist-util-visit mdast-util-to-string
    ```
 
 ### Configuration Check
@@ -121,13 +123,14 @@ Want to make sure everything's hooked up correctly? Let's do a quick test:
 
    More fascinating content!
    ```
-4. Start the SvelteKit dev server by running the following command in your project directory:
+   
+3. Start the SvelteKit dev server by running the following command in your project directory:
 
     ```
     npm run dev
     ```
 
-5. Open your browser and navigate to `http://localhost:5173/test` (or the appropriate port displayed after running `npm run dev`) to see your Markdown content rendered.
+4. Open your browser and navigate to `http://localhost:5173/test` (or the appropriate port displayed after running `npm run dev`) to see your Markdown content rendered.
 
 ### File Structure
 
@@ -150,6 +153,7 @@ my-sveltekit-blog/
 ```
 
 With everything set up, we're ready to create our custom remark plugin and start extracting those headers!
+
 ## Creating the Remark Plugin
 
 Alright, fellow developers, it's time to roll up our sleeves and create some magic! We're about to craft a custom remark plugin that will extract headers from our Markdown files like a pro. Let's break it down step by step.
@@ -278,7 +282,7 @@ src/routes/blog/[slug]/
 └── +page.ts
 ```
 
-### The Magic of +page.ts
+### The Magic of `+page.ts`
 
 In your `+page.ts` file, we're going to dynamically import our Markdown files. Check out this code:
 
@@ -310,7 +314,7 @@ What's happening here?
 2. The imported module gives us the default export (our content) and metadata (including our extracted headers).
 3. We return an object with the content and metadata, ready for our Svelte component to use.
 
-### Bringing It All Together in +page.svelte
+### Bringing It All Together in `+page.svelte`
 
 Now, let's create our `+page.svelte` file to display our post and use those extracted headers:
 
@@ -357,6 +361,7 @@ Let's break down this awesomeness:
 3. The actual post content is rendered using `<svelte:component this={data.content} />`.
 
 Finally add a bit of markdown to our `post1.md` file.
+
    ```markdown
    ---
    title: My Test Post
@@ -370,6 +375,7 @@ Finally add a bit of markdown to our `post1.md` file.
 
    More fascinating content!
    ```
+   
 ### The Result
 
 With this setup, when you navigate to `/blog/post1`, you'll see:
@@ -378,9 +384,7 @@ With this setup, when you navigate to `/blog/post1`, you'll see:
 2. A table of contents with links to each section
 3. The full post content
 
-And the best part? It's all generated automatically from your Markdown files!
-
-Absolutely! Let's spice up our plugin to add those IDs and update our smooth scrolling section. Here's the revamped version with our signature enthusiasm:
+And the best part? It's all generated automatically from your Markdown files! Now your readers can smoothly glide through your content like butter on a hot pancake!
 
 ### Bonus: Smooth Scrolling (Now with Auto-IDs!)
 
@@ -388,22 +392,57 @@ Hold onto your keyboards, folks, because we're about to turbocharge our plugin! 
 
 ```javascript
 import { visit } from 'unist-util-visit';
+import { toString } from 'mdast-util-to-string';
 
 export function remarkExtractHeaders() {
     return (tree, file) => {
         file.data.headers = [];
+        let headerCounter = 0; // keep track of number of headers passed
+
+        const generateId = (text, index) => {
+            // Convert to lowercase and replace spaces with hyphens
+            let id = text.toLowerCase().replace(/\s+/g, '-');
+            
+            // Remove any characters that are not alphanumeric, underscore, or hyphen
+            id = id.replace(/[^a-z0-9_-]/g, '');
+            
+            // Ensure the ID doesn't start with a number or hyphen
+            id = id.replace(/^[0-9-]/, '');
+            
+            // Add the index
+            id += `-${index}`;
+            
+            // Ensure the ID is not empty
+            if (id === '') {
+                id = `header-${index}`;
+            }
+            
+            return id;
+        };
+
+        const getHeaderText = (node) => {
+            return toString(node);
+        };
+
+
+        // Function to add an ID to a node
+        const addIdToNode = (node, id) => {
+            node.data = node.data || {};
+            node.data.hProperties = node.data.hProperties || {};
+            node.data.hProperties.id = id;
+        };
+
     
         visit(tree, 'heading', (node) => {
             if (node.depth === 2) {
-                const headerText = node.children[0].value;
-                const headerId = headerText.toLowerCase().replace(/\s+/g, '-');
+                const headerText = getHeaderText(node);
+                headerCounter++
+                
+                const headerId = generateId(headerText, headerCounter)
                 // Push object container header data instead of just string to file.data.headers
                 file.data.headers.push({ text: headerText, id: headerId });
-                
                 // Add an `id` property to the heading node
-                node.data = node.data || {};
-                node.data.hProperties = node.data.hProperties || {};
-                node.data.hProperties.id = headerId;
+                addIdToNode(node, headerId);
             }
         });
         
@@ -444,8 +483,6 @@ With this turbocharged setup, your readers won't just glide through your content
 
 Remember to update your content component to use these new IDs too. Your headers will be automatically equipped with their shiny new IDs, ready for all that smooth scrolling action!
 
-Now your readers can smoothly glide through your content like butter on a hot pancake!
-
 ### What's Next?
 
 You've now got a fully functional blog post with automatically generated tables of contents. In the next section, we'll explore some advanced techniques to take your content structure to the next level. Ready to become a SvelteKit content wizard? Let's go!
@@ -465,37 +502,57 @@ First, we need to modify our remark plugin to capture h3 headers and nest them u
 
 ```javascript
 import { visit } from 'unist-util-visit';
+import { toString } from 'mdast-util-to-string';
 
 export function remarkExtractHeaders() {
   return (tree, file) => {
     file.data.headers = [];
     let currentHeader = null; // Keep track of the current header object
+    let headerCounter = 0;
 
-    const generateId = (text) => `${text.toLowerCase().replace(/\s+/g, '-')}-${Math.floor(Math.random() * 10000)}`;
+    const generateId = (text, index) => {
+        let id = text.toLowerCase().replace(/\s+/g, '-');
+        id = id.replace(/[^a-z0-9_-]/g, '');
+        id = id.replace(/^[0-9-]/, '');
+        id += `-${index}`;
+        if (id === '') {
+            id = `header-${index}`;
+        }
 
+        return id;
+    };
+
+    const getHeaderText = (node) => {
+        return toString(node);
+    };
+
+    // Function to add an ID to a node
     const addIdToNode = (node, id) => {
       node.data = node.data || {};
       node.data.hProperties = node.data.hProperties || {};
       node.data.hProperties.id = id;
     };
 
+    // Visit each heading node in the tree
     visit(tree, 'heading', (node) => {
-      const headerText = node.children[0].value;
-      const headerId = generateId(headerText);
+      const headerText = getHeaderText(node);
+      headerCounter++
+      const headerId = generateId(headerText, headerCounter); // Generate a unique ID for the header
 
+      // Check if the heading is an h2 or higher level
       if (node.depth <= 2) {
         currentHeader = {
           text: headerText,
           id: headerId,
           depth: node.depth,
-          children: [], // Empty array for potential h3 children
+          children: [], // Initialize an empty array for potential h3 children
         };
 
-        file.data.headers.push(currentHeader);
-        addIdToNode(node, headerId);
-      } else if (node.depth === 3 && currentHeader) {
+        file.data.headers.push(currentHeader); // Add the current header to the headers array
+        addIdToNode(node, headerId); // Add the ID to the heading node
+      } else if (node.depth === 3 && currentHeader) { // Check if the heading is an h3 and there is a current header
         const childText = headerText;
-        const childId = generateId(childText);
+        const childId = generateId(childText, headerCounter); // Generate a unique ID for the h3 header
 
         currentHeader.children.push({
           text: childText,
@@ -503,7 +560,7 @@ export function remarkExtractHeaders() {
           depth: node.depth,
         });
 
-        addIdToNode(node, childId);
+        addIdToNode(node, childId); // Add the ID to the h3 node
       }
     });
 
@@ -512,6 +569,7 @@ export function remarkExtractHeaders() {
     file.data.fm.headers = file.data.headers;
   };
 }
+
 ```
 
 #### Updated Svelte Component: `+page.svelte`
@@ -538,8 +596,7 @@ Next, we update the Svelte component to render the nested table of contents.
 </nav>
 ```
 
-This updated approach creates a beautifully nested structure that respects your content's hierarchy!
-
+This updated approach creates a beautifully nested structure that respects your content's hierarchy! It's like a flock of geese flying in perfect V-formation – each header knows its place, guiding readers through your content with the grace and precision of a well-coordinated migration. Your table of contents is ready to take flight! 🪿
 
 ### 2. Floating Table of Contents
 
@@ -551,6 +608,7 @@ To make our table of contents float alongside the content for easy access add th
         overflow: scroll;
         width: fit-content;
         position: fixed;
+        right: 0;
     }
 ```
 
@@ -615,7 +673,7 @@ Want to show your readers exactly where they are in your content? Let's add some
     }
     .active li {
 		font-weight: initial;
-		color: initial; /* Svelte's orange */
+		color: initial;
 	}
 </style>
 ```
@@ -631,6 +689,7 @@ Make it easy for your readers to share specific sections by adding permalink but
     import { onMount } from 'svelte';
 
     onMount(() => {
+        // add to onMount if you also utilized the active section highlighting code
         document.querySelectorAll('h2, h3, h4, h5, h6').forEach(header => {
             const link = document.createElement('a');
             link.className = 'header-link';
@@ -663,14 +722,14 @@ If you would prefer your table of contents to take up less space and scroll with
     export let data;
 
     let activeHeader = '';
-    let tocElement;
+    let tocElement; // added variable here
 
     onMount(() => {
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     activeHeader = entry.target.id;
-                    scrollTocToActiveHeader();
+                    scrollTocToActiveHeader(); // added function here
                 }
             });
         }, { rootMargin: '-100px 0px -66%' });
@@ -689,7 +748,7 @@ If you would prefer your table of contents to take up less space and scroll with
         return () => observer.disconnect();
     });
 
-    function scrollTocToActiveHeader() {
+    function scrollTocToActiveHeader() { // added code for function here
         if (tocElement && activeHeader) {
             const activeElement = tocElement.querySelector(`a[href="#${activeHeader}"]`);
             if (activeElement) {
@@ -699,7 +758,7 @@ If you would prefer your table of contents to take up less space and scroll with
     }
 </script>
 
-<nav class="table-of-contents" bind:this={tocElement}>
+<nav class="table-of-contents" bind:this={tocElement}> <!-- added bind here -->
     <h2>Table of Contents</h2>
     <ul>
         {#each data.meta.headers as header}
@@ -729,12 +788,8 @@ If you would prefer your table of contents to take up less space and scroll with
         background-color: #f0f0f0;
         padding: 1rem;
     }
-    .active {
-        font-weight: bold;
-        color: #ff3e00; /* Svelte's orange */
-    }
     nav {
-		max-height: 10rem;
+		max-height: 10rem; /* updated size */
 		overflow: scroll;
 		width: fit-content;
 		position: fixed;
